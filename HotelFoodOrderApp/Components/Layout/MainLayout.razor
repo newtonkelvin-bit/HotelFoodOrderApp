@@ -1,0 +1,33 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <main>
+        <article class="content">
+            @Body
+        </article>
+    </main>
+</div>
+
+<style>
+    /* This CSS removes the default sidebar and centers your menu */
+    .page {
+        display: block;
+    }
+
+    main {
+        width: 100%;
+    }
+
+    .content {
+        padding: 0 !important; /* Removes extra padding for a clean edge-to-edge look */
+    }
+
+    /* Hide the default Blazor sidebar/nav entirely */
+    .sidebar {
+        display: none !important;
+    }
+
+    .top-row {
+        display: none !important;
+    }
+</style>

@@ -1,0 +1,186 @@
+﻿@page "/admin"
+@using HotelFoodOrderApp
+@inject MenuService menuService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<style>
+    /* Vibrant Red to Yellow Gradient Background */
+    .admin-bg {
+        background: linear-gradient(135deg, #E31C1C 0%, #FFC244 100%);
+        min-height: 100vh;
+        padding: 20px;
+        width: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .glass-card {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .order-card {
+        background: white;
+        border-radius: 15px;
+        margin-bottom: 15px;
+        padding: 15px;
+        border-left: 6px solid #E31C1C;
+        transition: transform 0.2s;
+    }
+
+    .receipt-container {
+        display: none;
+    }
+
+    @@media print {
+        .no-print {
+            display: none !important;
+        }
+
+        .receipt-container {
+            display: block !important;
+            width: 80mm;
+            font-family: monospace;
+            padding: 10px;
+            background: white;
+            color: black;
+        }
+    }
+</style>
+
+<div class="admin-bg">
+    @if (!isAuth)
+    {
+        <div class="d-flex align-items-center justify-content-center" style="height:85vh;">
+            <div class="glass-card p-5 text-center shadow" style="width: 360px;">
+                <h2 class="fw-bold mb-4" style="color: #E31C1C;">👑 KING'S ADMIN</h2>
+                <div class="mb-3">
+                    <input type="password" class="form-control form-control-lg text-center rounded-pill border-2"
+                           @bind="pin" placeholder="Enter Secret PIN" />
+                </div>
+                @if (showError)
+                {
+                    <div class="alert alert-danger py-2 rounded-pill small fw-bold">❌ Invalid Password!</div>
+                }
+                <button class="btn btn-lg w-100 rounded-pill fw-bold text-white shadow"
+                        style="background: #E31C1C;" @onclick="Verify">
+                    ENTER DASHBOARD
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="container no-print">
+            <div class="d-flex justify-content-between align-items-center mb-4 p-3 glass-card">
+                <h4 class="fw-bold mb-0 text-dark">👑 HOTEL CONTROL PANEL</h4>
+                <button class="btn btn-danger btn-sm rounded-pill px-4" @onclick="() => isAuth = false">Logout</button>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-6">
+                    <div class="glass-card p-3 text-center">
+                        <small class="text-muted fw-bold">TOTAL SALES</small>
+                        <h3 class="text-danger fw-bold mb-0">Ksh @menuService.OrderHistory.Sum(x => x.Total)</h3>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="glass-card p-3 text-center">
+                        <small class="text-muted fw-bold">ORDERS</small>
+                        <h3 class="text-dark fw-bold mb-0">@menuService.OrderHistory.Count</h3>
+                    </div>
+                </div>
+            </div>
+
+            <h6 class="text-white fw-bold mb-3 text-uppercase">Stock Management</h6>
+            <div class="glass-card p-3 mb-4">
+                <div class="row g-2">
+                    @foreach (var item in menuService.FullMenu)
+                    {
+                        <div class="col-6 col-md-3">
+                            <div class="bg-light p-2 border rounded-pill d-flex justify-content-between align-items-center px-3">
+                                <span class="small fw-bold">@item.Name</span>
+                                <input type="checkbox" class="form-check-input" @bind="item.IsAvailable" />
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <h6 class="text-white fw-bold mb-3 text-uppercase">Live Kitchen Orders</h6>
+            @foreach (var o in menuService.OrderHistory.OrderByDescending(x => x.OrderTime))
+            {
+                <div class="order-card shadow">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="badge @(o.Status == "Pending" ? "bg-danger" : "bg-success") mb-2">@o.Status</span>
+                            <h5 class="fw-bold mb-1">Order #@o.Id</h5>
+                            <div class="small text-danger fw-bold mb-2">📍 @o.Location</div>
+                            <div class="border-top pt-2">
+                                @foreach (var i in o.Items)
+                                {
+                                    <div class="small fw-bold text-dark">• 1x @i.Name</div>
+                                }
+                            </div>
+                        </div>
+                        <div class="text-end" style="min-width: 120px;">
+                            <button class="btn btn-dark btn-sm mb-2 w-100 rounded-pill" @onclick="() => PrintReceipt(o.Id)">🖨️ PRINT</button>
+                            <div class="btn-group w-100">
+                                <button class="btn btn-outline-danger btn-sm" @onclick='() => o.Status = "Cooking"'>Cook</button>
+                                <button class="btn btn-success btn-sm" @onclick='() => o.Status = "Ready"'>Ready</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (printingOrderId == o.Id)
+                {
+                    <div class="receipt-container">
+                        <center>
+                            <h2 style="margin:0">THE KING'S CAFE</h2>
+                            <p>KITCHEN RECEIPT</p>
+                            <hr style="border-top:1px dashed #000">
+                        </center>
+                        <p><b>Order:</b> #@o.Id</p>
+                        <p><b>Target:</b> @o.Location</p>
+                        <table style="width:100%">
+                            @foreach (var item in o.Items)
+                            {
+                                <tr><td>1x @item.Name</td><td align="right">@item.Price</td></tr>
+                            }
+                        </table>
+                        <hr style="border-top:1px dashed #000">
+                        <h3 align="right">TOTAL: Ksh @o.Total</h3>
+                    </div>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private bool isAuth = false, showError = false;
+    private string pin = "";
+    private int printingOrderId = 0;
+
+    private void Verify()
+    {
+        if (pin == "1234") { isAuth = true; showError = false; }
+        else { showError = true; pin = ""; }
+    }
+
+    private async Task PrintReceipt(int id)
+    {
+        printingOrderId = id;
+        StateHasChanged();
+        await Task.Delay(200);
+        await JSRuntime.InvokeVoidAsync("window.print");
+        printingOrderId = 0;
+    }
+}
