@@ -1,5 +1,5 @@
-# Use the official Microsoft .NET SDK image to build the app
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# Use the official Microsoft .NET SDK image targeting 10.0 to build the app
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /app
 
 # Copy the .csproj files and restore dependencies
@@ -10,8 +10,8 @@ RUN dotnet restore HotelFoodOrderApp/HotelFoodOrderApp.csproj
 COPY . ./
 RUN dotnet publish HotelFoodOrderApp/HotelFoodOrderApp.csproj -c Release -o out
 
-# Build the runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# Build the runtime image targeting 10.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app/out .
 
